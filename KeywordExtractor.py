@@ -164,27 +164,27 @@ class KeywordExtractor():
 
 def get_guery_list():
     
-    # query_list = [  ['debit',303],
-    #                 ['column',520],
-    #                 ['merchandise',408],
-    #                 ['accounting',537],
-    #                 ['payable',157],
-    #                 ['salesperson',78],
-    #                 ['accounts',876],
-    #                 ['columns',199],
-    #                 ['totals',78],
-    #                 ['balances',128],
-    #                 ['illustration',156]]
+    query_list = [  ['debit',303],
+                    ['column',520],
+                    ['merchandise',408],
+                    ['accounting',537],
+                    ['payable',157],
+                    ['salesperson',78],
+                    ['accounts',876],
+                    ['columns',199],
+                    ['totals',78],
+                    ['balances',128],
+                    ['illustration',156]]
     
-    query_list = []
+    # query_list = []
     
-    with open('resources/windows-exe-output.txt', 'r') as f:
+    # with open('resources/windows-exe-output.txt', 'r') as f:
         
-        for line in f:
+    #     for line in f:
                 
-                line_split = line.split()
+    #             line_split = line.split()
                 
-                query_list.append([line_split[0], int(line_split[3])])
+    #             query_list.append([line_split[0], int(line_split[3])])
 
 
     return query_list
@@ -201,7 +201,7 @@ def main():
     
     print(f'Active reference population size: {ke.active_reference.N}')
     
-    for query in query_list[100:110]:  
+    for query in query_list:  
         query_type = query[0]
         query_freq = query[1]
       
