@@ -28,13 +28,27 @@ CONCORDANCE_DATA_TYPE = 'concordance'
 
 DATA_TYPES = [RAW_TEXT_DATA_TYPE, CONCORDANCE_DATA_TYPE]
 
+ALPHA_DEFAULT_VALUE = 0.95
+MINIMAL_RATIO_DEFAULT_VALUE = 1.
+
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ 
+
 class KeywordExtractor():
 
     def __init__(self):
+        
+        # dictionary of references where the key is the reference title
+        # and the value is a Reference object
         self.references = {}
+        
+        # the active reference object
         self.active_reference = None
-        self.alpha = 0.95
-        self.data_type = RAW_TEXT_DATA_TYPE
+        
+        # the confidence level
+        self.set_confidence_level(ALPHA_DEFAULT_VALUE)
+        
+        # the data type either a concordance (2 columns type and frequency) or raw text
+        self.set_data_type(RAW_TEXT_DATA_TYPE)
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ 
 
@@ -66,33 +80,50 @@ class KeywordExtractor():
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ 
 
-    def _get_query_list(self,
-                        query_text : str):        
+    def _handle_concordance_query_text(self,
+                                       query_text : str):
         
         query_list = []
-        n_sample = 0
-        
-        if self.data_type == CONCORDANCE_DATA_TYPE:
-            for line in query_text.split('\n'):
+               
+        for line in query_text.split('\n'):
                 word_type = line.split()[0]
                 type_freq = int(line.split()[1])
                 
                 query_list.append([word_type, type_freq])
-                n_sample += type_freq
+               
+        return query_list
+
+    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+    def _handle_raw_text_query_text(self,
+                                    query_text : str):
+        
+        query_text = ''.join(filter(lambda x: x.isalpha() or x.isspace(), query_text))
+        query_text = query_text.lower() 
+        
+        word_counts = {}
+        for word in query_text.split():
+            word_counts[word] = word_counts.get(word, 0) + 1
+        
+        return [[word, count] for word, count in word_counts.items()]
+
+    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+    def _get_query_list(self,
+                        query_text : str):        
+        
+        query_list = []
+        
+        if self.data_type == CONCORDANCE_DATA_TYPE:
+            query_list = self._handle_concordance_query_text(query_text)    
                 
         elif self.data_type == RAW_TEXT_DATA_TYPE:
-            query_text = ''.join(filter(lambda x: x.isalpha() or x.isspace(), query_text))
-            query_text = query_text.lower() 
-            
-            n_sample = len(query_text.split())
-            
-            word_counts = {}
-            for word in query_text.split():
-                word_counts[word] = word_counts.get(word, 0) + 1
-            
-            query_list = [[word, count] for word, count in word_counts.items()]
+           query_list = self._handle_raw_text_query_text(query_text)
+        else:
+            #TODO: replace with raise Error
+            print(f'Invalid data type: {self.data_type}')
         
-        return query_list, n_sample
+        return query_list
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ 
 
@@ -105,25 +136,47 @@ class KeywordExtractor():
             # TODO: chanve to raise ValueError
             print(f'Invalid data type: {data_type}')
 
+    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    
+    def set_confidence_level(self, 
+                             alpha : float):
+        self.alpha = alpha
+    
+    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ 
+       
+    def _get_cutoff_value(self):
+    
+        return (1. - self.alpha) / 2.
+
+    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ 
+
+    def _get_n_sample(self,
+                      query_list): 
+        
+        n_sample = 0
+        
+        for query in query_list:
+            n_sample += query[1]
+        
+        return n_sample
+
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ 
 
     def extract_keywords(self, 
                          text : str):
     
-        query_list, n_sample = self._get_query_list(text)  
+        query_list = self._get_query_list(text)  
         
-        results = []
+        n_sample = self._get_n_sample(query_list)
         
+        results = []       
     
-        
         for query in query_list:          
-            print(query)        
-            mr, ll, ul = self.calculate_minimal_ratio(type=query[0],
-                                                    type_freq=query[1],
-                                                    sample_size=n_sample)
-        
-            print(f'{query[0]},{mr},{query[1]},{self.get_type_freq(query[0])},{ll},{ul}')
-        
+       
+            mr, ll, ul = self.calculate_minimal_ratio(  type=query[0],
+                                                        type_freq=query[1],
+                                                        sample_size=n_sample)
+                
             results.append((query[0], mr, query[1], self.get_type_freq(query[0]), ll, ul))
             
         return results
@@ -135,10 +188,23 @@ class KeywordExtractor():
                                 type_freq : int,
                                 sample_size : int):
         
-        ll = self._calculate_lower_limit(type, type_freq, sample_size)
-        ul = self._calculate_upper_limit(type, type_freq, sample_size)
+        # calculate hypergeometric and search parameters 
+        cutoff = self._get_cutoff_value()
+        max_i = type_freq + self.active_reference.get_type_freq(type)
+
+        # population size
+        M = self.active_reference.N + sample_size
+        # number of successes in population
+        n = type_freq + self.active_reference.get_type_freq(type)
+        # number of samples (# of draws)
+        N = sample_size
         
-        minimal_ratio = 1.
+        # calculate lower and upper limits
+        ll = self._calculate_lower_limit(M,n,N,max_i)
+        ul = self._calculate_upper_limit(M,n,N,max_i)
+        
+        # test if the type frequency is within the lower and upper limits
+        minimal_ratio = MINIMAL_RATIO_DEFAULT_VALUE
         if type_freq < ll:
             minimal_ratio = type_freq / ll
         elif type_freq > ul:
@@ -149,19 +215,12 @@ class KeywordExtractor():
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ 
      
     def _calculate_lower_limit( self,
-                                type : str,
-                                type_freq : int,
-                                sample_size : int):
-        
+                                M : int, # population size
+                                n : int, # number of successes in population
+                                N : int, # number of samples (# of draws)
+                                max_i : int):
         lower_limit = 0
-        
-        cutoff = (1. - self.alpha) / 2.
-        max_i = type_freq + self.active_reference.get_type_freq(type)
-
-        M = self.active_reference.N + sample_size
-        n = type_freq + self.active_reference.get_type_freq(type)
-        N = sample_size
-
+       
         cumulative_p_value = 0.
 
         for z_i in range(0,max_i):
@@ -169,7 +228,7 @@ class KeywordExtractor():
             # cumulative_p_value = hypergeom.cdf(z_i, M, n, N)
             cumulative_p_value = cumulative_p_value + hypergeom.pmf(z_i, M, n, N)
   
-            if cumulative_p_value > cutoff:
+            if cumulative_p_value > self._get_cutoff_value():
                 break
             else:
                 lower_limit = z_i
@@ -180,26 +239,18 @@ class KeywordExtractor():
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ 
         
     def _calculate_upper_limit( self,
-                                type : str,
-                                type_freq : int,
-                                sample_size : int):
+                                M : int, # population size
+                                n : int, # number of successes in population
+                                N : int, # number of samples (# of draws)
+                                max_i : int):
         
         upper_limit = 0
-        
-        cutoff = (1. - self.alpha) / 2.
-        max_i = type_freq + self.active_reference.get_type_freq(type)
-
-        M = self.active_reference.N + sample_size
-        n = type_freq + self.active_reference.get_type_freq(type)
-        N = sample_size
-        
-       
-        
+            
         for z_i in range(0,max_i):
                                     
             cumulative_p_value = 1. - hypergeom.cdf(z_i, M, n, N)
 
-            if cumulative_p_value < cutoff:
+            if cumulative_p_value < self._get_cutoff_value():
                 break
             else:
                 upper_limit = z_i
@@ -238,77 +289,6 @@ class KeywordExtractor():
     
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ 
     
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ 
 
-def get_guery_list():
-    
-    # query_list = [  ['debit',303],
-    #                 ['column',520],
-    #                 ['merchandise',408],
-    #                 ['accounting',537],
-    #                 ['payable',157],
-    #                 ['salesperson',78],
-    #                 ['accounts',876],
-    #                 ['columns',199],
-    #                 ['totals',78],
-    #                 ['balances',128],
-    #                 ['illustration',156]]
-    
-    query_list = []
-    
-    with open('resources/Bus-word-freq-list.txt', 'r') as f:
-        
-        for line in f:
-                
-            line_split = line.split()
-            
-            query_list.append([line_split[0], int(line_split[1])])
-
-
-    return query_list
-
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ 
-
-def get_sample_size(query_list):
-        
-    n_sample = 0
-    
-    for query in query_list:
-        n_sample += query[1]
-        
-    return n_sample
-
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ 
-
-def main():
-    
-    ke = KeywordExtractor()   
-    ke.add_reference('ententen', 'resources/ententen12_lc_freq.txt')
-    ke.select_reference('ententen')
-    
-    print(f'Active reference population size: {ke.active_reference.N}')
-   
-    query_list = get_guery_list()
-    n_sample = 324035 #get_sample_size(query_list) 
-    
-    print(f'Query text sample size: {n_sample}')
-    
-    for query in query_list:  
-        query_type = query[0]
-        query_freq = query[1]
-      
-        population_freq = ke.get_type_freq(query_type)
-
-        mr, ll, ul = ke.calculate_minimal_ratio(type=query_type, 
-                                                type_freq=query_freq,
-                                                sample_size=n_sample)
-        
-        if mr > 1.:
-            print(f'{query_type},{mr},{population_freq},{query_freq},{ll},{ul}')
-        
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~     
-
-if __name__ == '__main__':
-    main()
   
     
