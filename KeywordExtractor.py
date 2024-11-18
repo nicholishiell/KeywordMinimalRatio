@@ -13,7 +13,8 @@ class Reference():
         self.title = title
         self.reference_dict = reference_dict
         
-        self.N = 2435129274 #sum(reference_dict.values())
+        self.N = 2435129274 
+        self.sum = sum(reference_dict.values())
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ 
 
@@ -161,10 +162,10 @@ class KeywordExtractor():
         return n_sample
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ 
-
-    def extract_keywords(self, 
-                         text : str):
     
+    def analyze_text(self,
+                     text : str):
+        
         query_list = self._get_query_list(text)  
         
         n_sample = self._get_n_sample(query_list)
@@ -180,6 +181,21 @@ class KeywordExtractor():
             results.append((query[0], mr, query[1], self.get_type_freq(query[0]), ll, ul))
             
         return results
+
+    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+    def extract_keywords(self, 
+                         text : str):
+    
+        results = self.analyze_text(text)
+        
+        keywords = []
+        
+        for result in results:
+            if result[1] > 1.:
+                keywords.append((result[0], result[1]))
+        
+        return keywords
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

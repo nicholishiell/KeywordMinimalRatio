@@ -1,4 +1,10 @@
 from KeywordExtractor import KeywordExtractor
+import nltk
+from nltk.corpus import stopwords
+from nltk.tokenize import word_tokenize
+
+nltk.download('stopwords')
+nltk.download('punkt')
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ 
 
@@ -58,6 +64,20 @@ def main():
     n_sample = 324035 #get_sample_size(query_list) 
     
     print(f'Query text sample size: {n_sample}')
+    
+    print(ke.active_reference.sum)
+
+    
+    sum_without_stopwords = 0
+    stop_words = set(stopwords.words('english'))
+    for key in ke.active_reference.reference_dict:
+        if key in stop_words:
+            continue
+        else:
+            sum_without_stopwords += ke.active_reference.reference_dict[key]
+        
+    print(sum_without_stopwords)
+    input()
     
     for query in query_list:  
         query_type = query[0]

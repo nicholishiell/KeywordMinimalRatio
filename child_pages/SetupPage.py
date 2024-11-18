@@ -12,7 +12,7 @@ def extract_keywords(data_format : str):
     
     st.session_state[KEYWORD_EXTRACTOR_KEY].set_data_type(data_format)
     
-    results = st.session_state[KEYWORD_EXTRACTOR_KEY].extract_keywords(st.session_state[QUERY_TEXT_KEY])
+    results = st.session_state[KEYWORD_EXTRACTOR_KEY].analyze_text(st.session_state[QUERY_TEXT_KEY])
     
     st.session_state[ANALYSIS_RESULTS_KEY] = pd.DataFrame(  results, 
                                                             columns=RESULTS_COLUMNS)

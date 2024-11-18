@@ -1,7 +1,5 @@
 import streamlit as st
 
-from  KeywordExtractor import KeywordExtractor
-
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Global constants
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -31,25 +29,6 @@ QUERY_TEXT_KEY = 'query_text'
 ANALYSIS_RESULTS_KEY = 'analysis_results'
 
 USER_PAGE_SELECTION_KEY = 'user_page_selection'
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-def initialize_session_state():
-        
-    if KEYWORD_EXTRACTOR_KEY not in st.session_state:
-        ke = KeywordExtractor() 
-        ke.add_reference('ententen', 'resources/ententen12_lc_freq.txt')
-        ke.select_reference('ententen')
-    
-        st.session_state[KEYWORD_EXTRACTOR_KEY] = ke
-    
-    if QUERY_TEXT_KEY not in st.session_state:
-        st.session_state[QUERY_TEXT_KEY] = None
-        
-    if ANALYSIS_RESULTS_KEY not in st.session_state:
-        st.session_state[ANALYSIS_RESULTS_KEY] = None
-        
-    if USER_PAGE_SELECTION_KEY not in st.session_state:
-        st.session_state[USER_PAGE_SELECTION_KEY] = HOME_NAV_OPTION
         
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
