@@ -1,7 +1,5 @@
 from scipy.stats import hypergeom
 
-from utils import *
-
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ 
 
 class Reference():

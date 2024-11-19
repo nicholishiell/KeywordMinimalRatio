@@ -1,4 +1,4 @@
-from KeywordExtractor import KeywordExtractor
+from KeywordMinimalRatio.MinimalRatioKeywordExtractor import KeywordExtractor
 import nltk
 from nltk.corpus import stopwords
 from nltk.tokenize import word_tokenize
