@@ -191,7 +191,7 @@ class KeywordExtractor():
         
         for result in results:
             if result[1] > 1.:
-                keywords.append((result[0], result[1]))
+                keywords.append((result[0].upper(), result[1]))
         
         return keywords
 
