@@ -1,4 +1,6 @@
 from scipy.stats import hypergeom
+from nltk.corpus import stopwords
+import logging
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ 
 
@@ -48,6 +50,9 @@ class KeywordExtractor():
         
         # the data type either a concordance (2 columns type and frequency) or raw text
         self.set_data_type(RAW_TEXT_DATA_TYPE)
+        
+        # load the list of stoip words from NLTK
+        self.stop_words = stopwords.words("english")
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ 
 
@@ -162,7 +167,8 @@ class KeywordExtractor():
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ 
     
     def analyze_text(self,
-                     text : str):
+                     text : str,
+                     skip_stop_words : bool = True):
         
         query_list = self._get_query_list(text)  
         
@@ -171,6 +177,10 @@ class KeywordExtractor():
         results = []       
     
         for query in query_list:          
+       
+            if skip_stop_words and query[0].lower() in self.stop_words:
+                logging.info(f'Skipping stop word: {query[0]}')
+                continue
        
             mr, ll, ul = self.calculate_minimal_ratio(  type=query[0],
                                                         type_freq=query[1],
@@ -183,9 +193,10 @@ class KeywordExtractor():
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
     def extract_keywords(self, 
-                         text : str):
+                         text : str,
+                         skip_stop_words : bool = True):
     
-        results = self.analyze_text(text)
+        results = self.analyze_text(text,skip_stop_words)
         
         keywords = []
         
