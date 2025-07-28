@@ -26,6 +26,7 @@ class Reference():
 
 RAW_TEXT_DATA_TYPE = 'raw_text'
 CONCORDANCE_DATA_TYPE = 'concordance'
+HEAD_WORD_CONCORDANCE_DATA_TYPE = 'head_word_concordance'
 
 DATA_TYPES = [RAW_TEXT_DATA_TYPE, CONCORDANCE_DATA_TYPE]
 
@@ -83,22 +84,27 @@ class KeywordExtractor():
             return self.active_reference.N
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ 
-
+    # reads a concordance list into a list of lists where each sublist
+    # contains the type and frequency of the word
+    # the format of the concordance list is:
+    # word_type type_freq
     def _handle_concordance_query_text(self,
                                        query_text : str):
         
         query_list = []
                
         for line in query_text.split('\n'):
-                word_type = line.split()[0]
-                type_freq = int(line.split()[1])
+                line_split = line.split()
                 
-                query_list.append([word_type, type_freq])
-               
+                if len(line_split) == 2:
+                    word_type, type_freq = line_split
+                    query_list.append([word_type, int(type_freq)])
+                               
         return query_list
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
+    # reads a raw text into a list of lists where each sublist
+    # contains the word and its frequency
     def _handle_raw_text_query_text(self,
                                     query_text : str):
         
@@ -168,7 +174,7 @@ class KeywordExtractor():
     
     def analyze_text(self,
                      text : str,
-                     skip_stop_words : bool = True):
+                     skip_stop_words : bool = True) -> list:
         
         query_list = self._get_query_list(text)  
         
@@ -194,9 +200,10 @@ class KeywordExtractor():
 
     def extract_keywords(self, 
                          text : str,
-                         skip_stop_words : bool = True):
+                         skip_stop_words : bool = True) -> list:
     
-        results = self.analyze_text(text,skip_stop_words)
+        results = self.analyze_text(text,
+                                    skip_stop_words)
         
         keywords = []
         
@@ -204,7 +211,7 @@ class KeywordExtractor():
             if result[1] > 1.:
                 keywords.append((result[0].upper(), result[1]))
         
-        return keywords
+        return keywords,results
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -308,6 +315,7 @@ class KeywordExtractor():
                 
                 if len(line_split) == 2:
                     word, freq = line_split
+                    word = word.lower() 
                     reference_dict[word] = int(freq)
                             
         return Reference(title = reference_title, reference_dict=reference_dict)
